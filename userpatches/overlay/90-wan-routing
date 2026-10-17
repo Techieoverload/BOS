@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# NetworkManager dispatcher: per-interface routing tables for bonding.
+IFACE="$1"; EVENT="$2"
+
+declare -A TABLES=( [modem1]=wan1 [modem2]=wan2 [modem3]=wan3 [modem4]=wan4 [wan-eth]=wan5 )
+declare -A TABLE_IDS=( [wan1]=201 [wan2]=202 [wan3]=203 [wan4]=204 [wan5]=205 )
+
+TABLE="${TABLES[$IFACE]}"
+[ -z "$TABLE" ] && exit 0
+
+grep -q " $TABLE$" /etc/iproute2/rt_tables || echo "${TABLE_IDS[$TABLE]} $TABLE" >> /etc/iproute2/rt_tables
+
+clear_rules() {
+  ip route flush table "$TABLE" 2>/dev/null
+  while ip rule del table "$TABLE" 2>/dev/null; do :; done
+}
+
+case "$EVENT" in
+  up|dhcp4-change)
+    IP=$(ip -4 -o addr show dev "$IFACE" | awk '{print $4}' | cut -d/ -f1 | head -n1)
+    GW="${DHCP4_ROUTERS%% *}"
+    [ -z "$GW" ] && GW=$(ip route show dev "$IFACE" default | awk '{print $3}' | head -n1)
+    if [ -z "$IP" ] || [ -z "$GW" ]; then logger -t wan-routing "$IFACE: missing IP/GW"; exit 0; fi
+    clear_rules
+    ip route add default via "$GW" dev "$IFACE" table "$TABLE"
+    ip rule add from "$IP" table "$TABLE" priority "${TABLE_IDS[$TABLE]}"
+    logger -t wan-routing "$IFACE: $IP via $GW -> table $TABLE"
+    ;;
+  down|pre-down)
+    clear_rules
+    ;;
+esac
+exit 0

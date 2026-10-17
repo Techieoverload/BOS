@@ -1,0 +1,11 @@
+[Unit]
+Description=Beacon OS first boot setup
+Before=beacon-ui.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/beacon-firstboot.sh
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=Beacon OS control API
+After=network-online.target beacon-firstboot.service
+Wants=network-online.target
+Requires=beacon-firstboot.service
+
+[Service]
+EnvironmentFile=/etc/beacon/env
+ExecStart=/usr/bin/python3 /opt/beacon/beacon-server.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

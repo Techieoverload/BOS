@@ -1,0 +1,16 @@
+[Unit]
+Description=librist bonded sender
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=/etc/beacon/stream.env
+ExecStart=/usr/local/bin/ristsender \
+  -i "udp://@127.0.0.1:4000" \
+  -o "rist://${RIST_SERVER}:${RIST_PORT}?miface=modem1&weight=50,rist://${RIST_SERVER}:${RIST_PORT}?miface=modem2&weight=50,rist://${RIST_SERVER}:${RIST_PORT}?miface=modem3&weight=50,rist://${RIST_SERVER}:${RIST_PORT}?miface=modem4&weight=50,rist://${RIST_SERVER}:${RIST_PORT}?miface=wan-eth&weight=100" \
+  -p 1 -v 3
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
