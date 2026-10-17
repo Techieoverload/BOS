@@ -11,7 +11,20 @@ jobs:
     timeout-minutes: 360
     steps:
       - name: Checkout Beacon OS repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU and binfmt (needed to build arm64 images)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64,arm
+
+      - name: Install host emulation helpers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static binfmt-support
+          sudo update-binfmts --enable qemu-aarch64 || true
+          sudo update-binfmts --enable qemu-arm || true
+          ls /proc/sys/fs/binfmt_misc/
 
       - name: Free disk space on runner
         run: |
@@ -24,7 +37,7 @@ jobs:
 
       - name: Add Beacon userpatches
         run: |
-          mkdir -p armbian-build/userpatches
+          mkdir -p armbian-build/userpatches/extensions
           cp -r userpatches/* armbian-build/userpatches/
           chmod +x armbian-build/userpatches/customize-image.sh
 
