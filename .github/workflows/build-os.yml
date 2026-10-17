@@ -1,0 +1,49 @@
+name: Build BeaconOS Image
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - name: Checkout Beacon OS repo
+        uses: actions/checkout@v4
+
+      - name: Free disk space on runner
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo docker image prune --all --force || true
+          df -h /
+
+      - name: Get Armbian build framework
+        run: git clone --depth 1 https://github.com/armbian/build.git armbian-build
+
+      - name: Add Beacon userpatches
+        run: |
+          mkdir -p armbian-build/userpatches
+          cp -r userpatches/* armbian-build/userpatches/
+          chmod +x armbian-build/userpatches/customize-image.sh
+
+      - name: Compile Beacon OS for Orange Pi 5 Plus
+        working-directory: armbian-build
+        run: |
+          ./compile.sh build \
+            BOARD=orangepi5-plus \
+            BRANCH=vendor \
+            RELEASE=noble \
+            BUILD_MINIMAL=yes \
+            BUILD_DESKTOP=no \
+            KERNEL_CONFIGURE=no \
+            NETWORKING_STACK=network-manager \
+            COMPRESS_OUTPUTIMAGE=sha,xz
+
+      - name: Upload image
+        uses: actions/upload-artifact@v4
+        with:
+          name: beacon-os-orangepi5plus
+          path: armbian-build/output/images/*
+          if-no-files-found: error
